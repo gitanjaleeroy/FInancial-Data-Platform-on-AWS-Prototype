@@ -1,0 +1,39 @@
+{
+  "Comment": "CSV to Parquet Pipeline",
+  "StartAt": "RunGlueJob",
+  "States": {
+    "RunGlueJob": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "testJob_script",
+        "Arguments": {
+          "--input_path.$": "States.Format('s3://{}/{}', $.bucket, $.key)",
+          "--output_path": "s3://test-gitanjaleeroy/processed/"
+        }
+      },
+      "Next": "InvokeLoaderLambda",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ]
+    },
+    "InvokeLoaderLambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "connectToRDS",
+        "Payload": {
+          "processed_path": "s3://test-gitanjaleeroy/processed/"
+        }
+      },
+      "End": true
+    }
+  }
+}

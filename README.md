@@ -1,162 +1,288 @@
-# FInancial-Data-Platform-on-AWS-Prototype
-This is a prototype of ingesting files from sources into S3, event driven by Amazon EventBridge, ETL by AWS Glue and ready-to-consume datasets in Redshift. Use AWS Step Functions to orchestrate the pipeline.
+# Financial Data Platform on AWS (Prototype)
 
-1.	Built an end-to-end AWS data lake that ingests trade files into Amazon S3 and automatically processes newly arriving files.
-2.	Used AWS Glue Crawlers and Glue ETL Jobs to identify schema in files and convert files into partitioned Parquet datasets while supporting automatic incremental processing after an initial full load.
-3.	Loaded processed data into Amazon RDS (PostgreSQL) and Amazon Redshift for analytics, with Athena used to query raw S3 data through the Glue Data Catalog.
-4.	Implemented two orchestration approaches: EventBridge → Lambda → Step Functions and EventBridge → Lambda, both fully automating the ETL workflow. Also tried to add a bit of Amazon MWAA (Airflow) to do the same orchestration as of Step Functions to compare results.
-5.	Used Docker, Amazon ECR, IAM roles, CloudWatch, EC2, and partitioned S3 storage to build a scalable, production-style serverless data engineering pipeline.
+An end-to-end AWS data engineering pipeline that ingests financial trade data, performs event-driven ETL processing, and delivers analytics-ready datasets using modern AWS services.
 
-Overall Architecture
-                  Local Laptop
-                        │
-          synthetic_data.py creates files
-                        │
-                        ▼
-           transferRealtime.py watches folder
-                        │
-                        ▼
-                  Amazon S3 Raw Zone
-                  s3://bucket/raw/
-                        │
-             EventBridge detects upload
-                        │
-         ┌──────────────┴───────────────┐
-         │                              │
-         ▼                              ▼
- Option 1                        Option 2
- Step Functions                 MWAA Airflow
-         │                              │
-         └──────────────┬───────────────┘
-                        ▼
-                 AWS Glue ETL Job
-                        │
-             CSV → Parquet Conversion
-                        │
-         Job Bookmark = Incremental Load
-                        │
-                        ▼
-         S3 Processed (Partitioned Parquet)
+## 🚀 Overview
+
+This project demonstrates a production-style, serverless data platform capable of:
+
+- Automatically ingesting trade files into Amazon S3
+- Triggering ETL workflows through Amazon EventBridge
+- Transforming raw CSV files into partitioned Parquet datasets using AWS Glue
+- Supporting both full and incremental data processing
+- Loading curated datasets into Amazon RDS PostgreSQL and Amazon Redshift
+- Querying raw data directly with Amazon Athena
+- Comparing Step Functions and Amazon MWAA (Airflow) for orchestration
+
+---
+
+# 🏗️ Architecture
+
+```text
+                 Local Laptop
+                      │
+      synthetic_data.py generates CSV files
+                      │
+                      ▼
+       transferRealtime.py monitors folder
+                      │
+                      ▼
+              Amazon S3 (Raw Zone)
+                 s3://bucket/raw/
+                      │
+          Amazon EventBridge Trigger
+                      │
+        ┌─────────────┴─────────────┐
+        │                           │
+        ▼                           ▼
+ AWS Step Functions          Amazon MWAA
+        │                    (Airflow DAG)
+        └─────────────┬─────────────┘
+                      ▼
+               AWS Glue ETL Job
+                      │
+           CSV → Partitioned Parquet
+                      │
+             Glue Job Bookmarks
+            (Incremental Processing)
+                      │
+                      ▼
+        Amazon S3 Processed Zone
  processed/trades/year=YYYY/month=MM/day=DD/
-                        │
-        ┌───────────────┴────────────────┐
-        ▼                                ▼
-     Amazon Athena                 Lambda Loader
- (Query S3 directly)                     │
-                                         ▼
-                             Amazon RDS PostgreSQL
-                                         │
-                                         ▼
-                                 Amazon Redshift
-                                         │
-                                         ▼
-                                   Analytics
-________________________________________
-Technologies Used
-Category	Services
-Storage	Amazon S3
-Metadata	Glue Data Catalog
-ETL	AWS Glue (Spark)
-Query	Athena
-Database	Amazon RDS PostgreSQL
-Data Warehouse	Amazon Redshift
-Compute	AWS Lambda
-Orchestration	Step Functions, Amazon MWAA (Airflow)
-Eventing	Amazon EventBridge
-Container	Docker, Amazon ECR
-Monitoring	CloudWatch
-Networking	VPC, Security Groups
-Compute Instance	EC2
-________________________________________
-Pipeline Stages
-Stage 1 – Data Generation
-synthetic_data.py
-Creates synthetic trade CSV files.
-________________________________________
-Stage 2 – Real-time Ingestion
-transferRealtime.py
-•	Watches local folder
-•	Automatically uploads files to
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+    Amazon Athena          Lambda Loader
+                                   │
+                                   ▼
+                      Amazon RDS PostgreSQL
+                                   │
+                                   ▼
+                          Amazon Redshift
+                                   │
+                                   ▼
+                               Analytics
+```
+
+---
+
+# ✨ Features
+
+- Event-driven architecture using Amazon EventBridge
+- Fully automated ETL with AWS Glue
+- Incremental processing using Glue Job Bookmarks
+- CSV to Parquet conversion
+- Partitioned data lake design
+- Athena querying via Glue Data Catalog
+- Containerized Lambda functions
+- Data loading into PostgreSQL and Redshift
+- Two orchestration implementations:
+  - AWS Step Functions
+  - Amazon MWAA (Apache Airflow)
+
+---
+
+# 🛠️ Technology Stack
+
+| Category | Technology |
+|-----------|------------|
+| Storage | Amazon S3 |
+| Metadata | AWS Glue Data Catalog |
+| ETL | AWS Glue (Spark) |
+| Query Engine | Amazon Athena |
+| Database | Amazon RDS PostgreSQL |
+| Data Warehouse | Amazon Redshift |
+| Compute | AWS Lambda |
+| Orchestration | AWS Step Functions, Amazon MWAA |
+| Eventing | Amazon EventBridge |
+| Containers | Docker, Amazon ECR |
+| Monitoring | Amazon CloudWatch |
+| Networking | VPC, Security Groups |
+| Compute Instance | Amazon EC2 |
+
+---
+
+# 📈 Pipeline Workflow
+
+## 1. Data Generation
+
+**`synthetic_data.py`**
+
+- Generates synthetic financial trade CSV files.
+
+---
+
+## 2. Real-Time Ingestion
+
+**`transferRealtime.py`**
+
+- Monitors a local directory
+- Automatically uploads new files to:
+
+```
 S3/raw/
-Runs automatically at Windows startup using a batch file.
-________________________________________
-Stage 3 – Metadata Discovery
+```
+
+Runs automatically at Windows startup.
+
+---
+
+## 3. Metadata Discovery
+
+```
+S3 Raw
+   │
+   ▼
 Glue Crawler
-S3/raw
-       ↓
-Glue Catalog
-       ↓
-Athena
-Allows SQL querying directly on S3.
-________________________________________
-Stage 4 – ETL
-Glue Job
+   │
+   ▼
+Glue Data Catalog
+   │
+   ▼
+Amazon Athena
+```
+
+Allows SQL queries directly against raw data stored in S3.
+
+---
+
+## 4. ETL Processing
+
+AWS Glue performs:
+
+```
 CSV
-   ↓
-Clean
-   ↓
-Transform
-   ↓
-Deduplicate
-   ↓
+ │
+ ▼
+Cleaning
+ │
+ ▼
+Transformation
+ │
+ ▼
+Deduplication
+ │
+ ▼
 Parquet
-Output:
-processed/trades/
-year=YYYY/
-month=MM/
-day=DD/
-________________________________________
-Stage 5 – Incremental Processing
-Uses
-Glue Job Bookmarks
-which automatically remember which S3 files have already been processed.
-Result:
-•	First run → Full Load
-•	Later runs → Incremental only
-No custom Spark logic required.
-________________________________________
-Stage 6 – Database Load
-Container-based Lambda
+```
+
+Output structure:
+
+```
+processed/
+└── trades/
+    ├── year=YYYY/
+    ├── month=MM/
+    └── day=DD/
+```
+
+---
+
+## 5. Incremental Processing
+
+Uses **Glue Job Bookmarks** to automatically process only new files.
+
+| Run | Behavior |
+|------|----------|
+| First Execution | Full Load |
+| Subsequent Runs | Incremental Load |
+
+No custom Spark tracking logic is required.
+
+---
+
+## 6. Database Loading
+
+Containerized AWS Lambda:
+
+```
 Parquet
-    ↓
+   │
+   ▼
 Read
-    ↓
+   │
+   ▼
 Insert
-    ↓
-Amazon RDS
-Supports
-•	Full Load
-•	Incremental Load
-using Lambda test events.
-________________________________________
-Stage 7 – Orchestration Option 1
+   │
+   ▼
+Amazon RDS PostgreSQL
+```
+
+Supports both:
+
+- Full loads
+- Incremental loads
+
+---
+
+# ⚙️ Orchestration
+
+## Option 1 — AWS Step Functions
+
+```
 S3 Upload
-      ↓
-EventBridge
-      ↓
+     │
+     ▼
+Amazon EventBridge
+     │
+     ▼
 Lambda
-      ↓
+     │
+     ▼
 Step Functions
-      ↓
+     │
+     ▼
 Glue Job
-      ↓
+     │
+     ▼
 Lambda
-      ↓
-RDS
-________________________________________
-Stage 8 – Orchestration Option 2
+     │
+     ▼
+Amazon RDS
+```
+
+---
+
+## Option 2 — Amazon MWAA (Airflow)
+
+```
 S3 Upload
-      ↓
-EventBridge
-      ↓
+     │
+     ▼
+Amazon EventBridge
+     │
+     ▼
 Lambda
-      ↓
+     │
+     ▼
 MWAA Airflow DAG
-      ↓
+     │
+     ▼
 Glue Job
-      ↓
+     │
+     ▼
 Lambda
-      ↓
-RDS
+     │
+     ▼
+Amazon RDS
+```
 
+---
 
+# 📊 Key Concepts Demonstrated
+
+- Data Lake Architecture
+- Event-Driven Processing
+- Serverless ETL
+- Incremental Data Pipelines
+- Data Partitioning
+- Metadata Management
+- Workflow Orchestration
+- Infrastructure for Analytics
+- Production-style AWS Data Engineering
+
+---
+
+# 🎯 Project Goal
+
+This prototype demonstrates how modern AWS services can be combined to build an automated, scalable, event-driven financial data platform capable of ingesting, transforming, and serving analytics-ready datasets with minimal operational overhead.

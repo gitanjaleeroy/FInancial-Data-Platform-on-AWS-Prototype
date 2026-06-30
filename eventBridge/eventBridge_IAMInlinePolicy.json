@@ -1,0 +1,15 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:InvokeFunction"
+            ],
+            "Resource": [
+                "arn:aws:lambda:us-west-1:211125553511:function:dedup_lambda",
+		"arn:aws:lambda:us-west-1:211125553511:function:WithAirflow"
+            ]
+        }
+    ]
+}
