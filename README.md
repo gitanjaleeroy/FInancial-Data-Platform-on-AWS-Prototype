@@ -86,7 +86,7 @@ An end-to-end AWS data engineering pipeline that ingests financial trade data, p
 
 \---
 
-# 📈 Pipeline Workflow
+# Pipeline Workflow
 
 ## 1\. Data Generation
 
